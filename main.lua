@@ -126,6 +126,14 @@ function Assistant:onDispatcherRegisterActions()
     general = true,
     separator = true
   })
+
+  -- Register Image Generation action (available for gesture binding)
+  Dispatcher:registerAction("ai_generate_image", {
+    category = "none",
+    event = "AskAIGenerateImage",
+    title = _("Generate Image from Description"),
+    general = true
+  })
 end
 
 -- tricky hack: make our menu be the first under tools menu
@@ -207,6 +215,17 @@ function Assistant:addToMainMenu(menu_items)
                     hold_callback = function ()
                       UIManager:show(InfoMessage:new{
                         text = _("Summary of the book using your highlights and notes.")
+                      })
+                    end,
+                  },
+                  {
+                    text = _("Generate Image from Description"),
+                    callback = function ()
+                      self:onAskAIGenerateImage()
+                    end,
+                    hold_callback = function ()
+                      UIManager:show(InfoMessage:new{
+                        text = _("Generate an image from highlighted text description using AI.")
                       })
                     end,
                   },
@@ -325,6 +344,17 @@ function Assistant:addToMainMenu(menu_items)
                   hold_callback = function ()
                     UIManager:show(InfoMessage:new{
                       text = _("Take quick notes that will be saved to your notebook.")
+                    })
+                  end,
+                },
+                {
+                  text = _("Generate Image from Description"),
+                  callback = function ()
+                    self:onAskAIGenerateImage()
+                  end,
+                  hold_callback = function ()
+                    UIManager:show(InfoMessage:new{
+                      text = _("Generate an image from text description using AI.")
                     })
                   end,
                 },
@@ -947,6 +977,17 @@ end
       self.quicknote = QuickNote:new(self)
     end
     self.quicknote:show()
+    return true
+  end
+
+  function Assistant:onAskAIGenerateImage()
+    if not self:isConfigured() then return end
+    NetworkMgr:runWhenOnline(function()
+      local showImageDialog = require("assistant_imagedialog")
+      Trapper:wrap(function()
+        showImageDialog(self)
+      end)
+    end)
     return true
   end
 
