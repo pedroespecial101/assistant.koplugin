@@ -16,6 +16,15 @@ local ffiutil = require("ffi/util")
 local Device = require("device")
 local Screen = Device.screen
 
+-- Load companion module (optional, for development/debugging)
+local Companion
+local companion_ok, companion_module = pcall(require, "assistant_companion")
+if companion_ok then
+    Companion = companion_module
+else
+    logger.dbg("Companion module not found (this is normal if not installed)")
+end
+
 local Querier = {
     assistant = nil, -- reference to the main assistant object
     settings = nil,
@@ -25,12 +34,20 @@ local Querier = {
     provider_name = nil,
     interrupt_stream = nil,      -- function to interrupt the stream query
     user_interrupted = false,  -- flag to indicate if the stream was interrupted
+    companion = nil, -- companion app reporter (optional)
 }
 
 function Querier:new(o)
     o = o or {}
     setmetatable(o, self)
     self.__index = self
+    
+    -- Initialize companion if available and settings exist
+    if Companion and o.settings then
+        o.companion = Companion:new(o.settings)
+        logger.dbg("Companion initialized")
+    end
+    
     return o
 end
 
@@ -152,6 +169,16 @@ function Querier:query(message_history, title)
         return nil, _("Plugin is not configured.")
     end
 
+    -- Report query start to companion app
+    if self.companion and self.companion:is_enabled() then
+        self.companion:send("query_start", {
+            provider = self.provider_name,
+            model = koutil.tableGetValue(self.provider_settings, "model"),
+            title = title or "AI Query",
+            history = trimMessageHistory(message_history),
+        })
+    end
+
     local use_stream_mode = self.settings:readSetting("use_stream_mode", true)
     koutil.tableSetValue(self.provider_settings, use_stream_mode, "additional_parameters", "stream")
 
@@ -245,10 +272,22 @@ function Querier:query(message_history, title)
         UIManager:close(streamDialog)
 
         if self.user_interrupted then
+            if self.companion and self.companion:is_enabled() then
+                self.companion:send("error", {
+                    message = "Request cancelled by user",
+                    provider = self.provider_name,
+                })
+            end
             return nil, _("Request cancelled by user.")
         end
 
         if err then
+            if self.companion and self.companion:is_enabled() then
+                self.companion:send("error", {
+                    message = err,
+                    provider = self.provider_name,
+                })
+            end
             return nil, err:gsub("^[\n%s]*", "") -- clean leading spaces and newlines
         end
 
@@ -257,14 +296,40 @@ function Querier:query(message_history, title)
 
     if err == self.handler.CODE_CANCELLED then
         self.user_interrupted = true
+        if self.companion and self.companion:is_enabled() then
+            self.companion:send("error", {
+                message = "Request cancelled by user",
+                provider = self.provider_name,
+            })
+        end
         return nil, _("Request cancelled by user.")
     end
 
     if type(res) ~= "string" or err ~= nil then
+        if self.companion and self.companion:is_enabled() then
+            self.companion:send("error", {
+                message = tostring(err),
+                provider = self.provider_name,
+            })
+        end
         return nil, tostring(err)
     elseif #res == 0 then
+        if self.companion and self.companion:is_enabled() then
+            self.companion:send("error", {
+                message = "No response received",
+                provider = self.provider_name,
+            })
+        end
         return nil, _("No response received.") .. (err and tostring(err) or "")
     end
+    
+    -- Query completed successfully
+    if self.companion and self.companion:is_enabled() then
+        self.companion:send("query_complete", {
+            response_length = #res,
+        })
+    end
+    
     return res
 end
 
@@ -367,9 +432,17 @@ function Querier:processStream(bgQuery, trunk_callback)
                             if type(content) == "string" and #content > 0 then
                                 table.insert(result_buffer, content)
                                 if trunk_callback then trunk_callback(content, result_buffer) end
+                                -- Report to companion
+                                if self.companion and self.companion:is_enabled() then
+                                    self.companion:send("stream_chunk", { content = content })
+                                end
                             elseif type(reasoning_content) == "string" and #reasoning_content > 0 then
                                 table.insert(reasoning_content_buffer, reasoning_content)
                                 if trunk_callback then trunk_callback(reasoning_content, reasoning_content_buffer) end
+                                -- Report to companion
+                                if self.companion and self.companion:is_enabled() then
+                                    self.companion:send("stream_chunk", { reasoning = reasoning_content })
+                                end
                             elseif content == nil and reasoning_content == nil then
                                 logger.warn("Unexpected SSE data:", json_str)
                             end
