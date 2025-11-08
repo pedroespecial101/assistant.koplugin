@@ -466,6 +466,23 @@ Now begin the analysis with the provided book_text and highlights.]],
             _("Example"),
             _("Word Origin"))
     },
+    
+    -- Image generation prompt (book-level)
+    generate_image = {
+        system_prompt =
+        "You are an AI image generation assistant. You create images based on text descriptions.",
+        user_prompt = [[
+Generate a high-quality image based on this description: "{user_input}"
+
+Please create a detailed, artistic image that captures the essence of the description. 
+Consider composition, lighting, colors, and artistic style to make it visually appealing.
+
+If the description references the book context:
+- Book: "{title}" by {author}
+- Reading progress: {progress}%
+
+Create an image that fits the narrative and style of the book.]],
+    },
     suggestions_prompt = T([[
 At the end of your response, first generate 2-3 questions in {language} language based on your answer. Critically, these questions **must not contain any quotation marks and parentheses, or any other punctuation whatsoever**. Only use letters and spaces.
 Then, display these questions as hyperlinks in a **Markdown unordered list** using the following exact format:

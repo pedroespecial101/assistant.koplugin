@@ -148,6 +148,24 @@ local CONFIGURATION = {
             temperature = 0.7,
             max_tokens = 4096
         },
+        -- Image Generation via OpenRouter (uses specialized gemini_image handler)
+        -- Reference: https://openrouter.ai/docs/features/multimodal/image-generation
+        gemini_image = {
+            model = "google/gemini-2.5-flash-image", -- Gemini 2.5 Flash Image model for image generation
+            base_url = "https://openrouter.ai/api/v1/chat/completions",
+            api_key = "your-openrouter-api-key",
+            additional_parameters = {
+                temperature = 0.7,
+                max_tokens = 4096,
+                -- Image generation specific parameters
+                -- Supported aspect ratios: "1:1" (1024×1024, default), "2:3" (832×1248), "3:2" (1248×832), 
+                --                         "3:4" (864×1184), "4:3" (1184×864), "4:5" (896×1152), "5:4" (1152×896),
+                --                         "9:16" (768×1344), "16:9" (1344×768), "21:9" (1536×672)
+                image_config = {
+                    aspect_ratio = "1:1", -- Default 1024×1024
+                }
+            }
+        },
     },
 
     -- Optional features 
@@ -178,10 +196,46 @@ local CONFIGURATION = {
             -- example of adding a custom prompt:
             -- myprompt = { text ="Prompt Title", system_prompt = "you are a helpful assistant.", user_prompt = "describe the following text in detail: {highlight}", order = 50, show_on_main_popup = true, },
 
+            -- Customize image generation prompt (optional)
+            -- This prompt is used by the "Generate Image" feature
+            -- Available placeholders: {user_input} (the image description), {title}, {author}, {progress}, {language}
+            -- generate_image = {
+            --     system_prompt = "You are an artistic AI that creates photorealistic images.",
+            --     user_prompt = [[
+            -- Create a photorealistic image: "{user_input}"
+            -- 
+            -- Context from book: "{title}" by {author} (at {progress}%)
+            -- 
+            -- Style: Photorealistic, cinematic lighting, high detail.
+            -- Respond in: {language}
+            --     ]],
+            -- },
+
         },
 
         book_level_prompts = {    
             -- for an example of a custom book-level prompt, see: https://github.com/omer-faruq/assistant.koplugin/wiki/configuration#5-book-level-custom-prompts
+            
+            -- Example: Book cover image generation as a book-level prompt
+            -- This would show as a menu item under "Book-Level Custom Prompts"
+            -- book_cover_image = {
+            --     type = "feature",
+            --     visible = true,
+            --     text = "Generate Book Cover",
+            --     description = "Generate an artistic book cover based on the story so far",
+            --     system_prompt = "You are an artistic AI that creates book cover images.",
+            --     user_prompt = [[
+            -- Create a beautiful book cover image for "{title}" by {author}.
+            -- 
+            -- Based on the story up to {progress}%, design a cover that captures:
+            -- - The main theme and mood
+            -- - Key visual elements from the narrative
+            -- - Appropriate genre styling
+            -- 
+            -- Style: Professional book cover art, eye-catching, genre-appropriate.
+            --     ]],
+            --     use_image_generation = true, -- Set to true to use image generation instead of text
+            -- },
         },    
 
         -- AI Recap configuration

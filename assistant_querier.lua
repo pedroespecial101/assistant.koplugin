@@ -55,18 +55,31 @@ function Querier:load_model(provider_name)
     end
 
     local handler_name
-    local underscore_pos = provider_name:find("_")
-    if underscore_pos and underscore_pos > 0 then
-        -- Extract `openai` from `openai_o4mimi`
-        handler_name = provider_name:sub(1, underscore_pos - 1)
-    else
-        handler_name = provider_name -- original name
-    end
-
-    -- Load the handler based on the provider name
+    
+    -- First, try loading the exact handler name (for special handlers like gemini_image)
     local success, handler = pcall(function()
-        return require("api_handlers." .. handler_name)
+        return require("api_handlers." .. provider_name)
     end)
+    
+    if success then
+        -- Exact handler found (e.g., gemini_image.lua exists)
+        handler_name = provider_name
+    else
+        -- Try with the base name (strip after underscore)
+        local underscore_pos = provider_name:find("_")
+        if underscore_pos and underscore_pos > 0 then
+            -- Extract `openai` from `openai_o4mimi`
+            handler_name = provider_name:sub(1, underscore_pos - 1)
+        else
+            handler_name = provider_name -- original name
+        end
+        
+        -- Load the handler based on the base name
+        success, handler = pcall(function()
+            return require("api_handlers." .. handler_name)
+        end)
+    end
+    
     if success then
         self.handler = handler
         self.handler_name = handler_name

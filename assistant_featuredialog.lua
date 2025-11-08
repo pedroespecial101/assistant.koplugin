@@ -42,6 +42,23 @@ local function showFeatureDialog(assistant, feature_type, title, author, progres
         system_prompt = custom_config.system_prompt
         user_prompt_template = custom_config.user_prompt
 
+        -- Check if this is an image generation request
+        if custom_config.use_image_generation then
+            -- Redirect to image generation with the formatted prompt
+            local formatted_prompt = user_prompt_template:gsub("{(%w+)}", {
+                title = title,
+                author = author,
+                progress = formatted_progress_percent,
+                language = language
+            })
+            
+            -- Use the image dialog to generate the image
+            local ImageDialog = require("assistant_imagedialog")
+            local img_dialog = ImageDialog:new(assistant)
+            img_dialog:generateImageWithPrompt(formatted_prompt, system_prompt)
+            return
+        end
+
         -- Handle use flags
         book_text = nil
         highlights_notes = nil

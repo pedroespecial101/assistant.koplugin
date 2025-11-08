@@ -32,6 +32,84 @@ function ImageDialog:show()
   self:createImageInputDialog()
 end
 
+-- Generate image with a pre-formatted prompt (for book-level prompts)
+function ImageDialog:generateImageWithPrompt(formatted_prompt, system_prompt)
+  -- Show loading message
+  local loading_msg = InfoMessage:new{
+    icon = "book.opened",
+    text = _("Generating image..."),
+  }
+  UIManager:show(loading_msg)
+  
+  -- Create a specialized querier for image generation
+  local image_querier = require("assistant_querier"):new({
+    assistant = self.assistant,
+    settings = self.assistant.settings,
+  })
+  
+  -- Load the gemini_image provider (for image generation via OpenRouter)
+  local ok, err = image_querier:load_model("gemini_image")
+  if not ok then
+    UIManager:close(loading_msg)
+    UIManager:show(InfoMessage:new{
+      text = T(_("Failed to load image generation model: %1"), err or _("Unknown error")),
+      icon = "notice-warning"
+    })
+    return
+  end
+  
+  -- Use the provided system prompt or default
+  local sys_prompt = system_prompt or "You are an AI image generation assistant."
+  
+  -- Build message history
+  local message_history = {
+    {
+      role = "system",
+      content = sys_prompt
+    },
+    {
+      role = "user",
+      content = formatted_prompt
+    }
+  }
+  
+  local answer, err = image_querier:query(message_history, _("Generating image..."))
+  
+  UIManager:close(loading_msg)
+  
+  if err then
+    image_querier:showError(err)
+    return
+  end
+  
+  if answer then
+    -- Check if we got an image response
+    if type(answer) == "table" and answer.type == "image" and answer.image_url then
+      -- Handle image URL response
+      self:handleImageResponse(formatted_prompt, answer.image_url)
+    elseif type(answer) == "string" then
+      -- Handle text response (fallback)
+      UIManager:show(InfoMessage:new{
+        text = T(_("Image generation response:\n\n%1\n\nNote: The response appears to be text rather than an image. This might indicate an issue with the image generation model configuration."), answer),
+        timeout = 15
+      })
+      
+      -- Save the response to notebook
+      self:saveImageResponse(formatted_prompt, answer)
+    else
+      UIManager:show(InfoMessage:new{
+        text = _("Unexpected response format from image generation service."),
+        icon = "notice-warning"
+      })
+    end
+  else
+    UIManager:show(InfoMessage:new{
+      text = _("No response received from image generation service."),
+      icon = "notice-warning"
+    })
+  end
+end
+
 function ImageDialog:createImageInputDialog()
   self.input_dialog = InputDialog:new {
     title = _("Generate Image from Description"),
@@ -92,7 +170,7 @@ function ImageDialog:generateImage(description)
     settings = self.assistant.settings,
   })
   
-  -- Load the Gemini image model
+  -- Load the gemini_image provider (for image generation via OpenRouter)
   local ok, err = image_querier:load_model("gemini_image")
   if not ok then
     UIManager:close(loading_msg)
@@ -103,19 +181,50 @@ function ImageDialog:generateImage(description)
     return
   end
   
-  -- Create the image generation prompt
-  local image_prompt = string.format([[
-Generate a high-quality image based on this description: "%s"
-
-Please create a detailed, artistic image that captures the essence of the description. 
-Consider composition, lighting, colors, and artistic style to make it visually appealing.
-]], description)
+  -- Get book context
+  local DocSettings = require("docsettings")
+  local doc = self.assistant.ui.document
+  local doc_settings = DocSettings:open(doc.file)
+  local percent_finished = doc_settings:readSetting("percent_finished") or 0
+  local doc_props = doc_settings:child("doc_props")
+  local title = doc_props:readSetting("title") or doc:getProps().title or "Unknown Title"
+  local author = doc_props:readSetting("authors") or doc:getProps().authors or "Unknown Author"
   
-  -- Use the image querier to make the API call
+  -- Get the prompt configuration (allow customization)
+  local Prompts = require("assistant_prompts")
+  local koutil = require("util")
+  local user_prompts = koutil.tableGetValue(self.assistant.CONFIGURATION, "features", "prompts")
+  local prompt_config = Prompts.getMergedCustomPrompts(user_prompts)["generate_image"]
+  
+  if not prompt_config then
+    -- Fallback if prompt not found
+    prompt_config = Prompts.assistant_prompts.generate_image
+  end
+  
+  -- Get language setting
+  local language = self.assistant.settings:readSetting("response_language", "English")
+  
+  -- Format the user prompt with placeholders
+  local user_content = (prompt_config.user_prompt or ""):gsub("{(%w+)}", {
+    user_input = description,
+    title = title,
+    author = author,
+    progress = string.format("%.1f", percent_finished * 100),
+    language = language
+  })
+  
+  -- Get system prompt
+  local system_prompt = prompt_config.system_prompt or "You are an AI image generation assistant."
+  
+  -- Build message history
   local message_history = {
     {
+      role = "system",
+      content = system_prompt
+    },
+    {
       role = "user",
-      content = image_prompt
+      content = user_content
     }
   }
   

@@ -218,17 +218,6 @@ function Assistant:addToMainMenu(menu_items)
                       })
                     end,
                   },
-                  {
-                    text = _("Generate Image from Description"),
-                    callback = function ()
-                      self:onAskAIGenerateImage()
-                    end,
-                    hold_callback = function ()
-                      UIManager:show(InfoMessage:new{
-                        text = _("Generate an image from highlighted text description using AI.")
-                      })
-                    end,
-                  },
                 }
               },
               {
@@ -245,13 +234,13 @@ function Assistant:addToMainMenu(menu_items)
                 separator = true,
               },
               {
-                text = _("Take Quick Notes"),
+                text = _("🎨 Generate Image from Description"),
                 callback = function ()
-                  self:onAskAIQuickNote()
+                  self:onAskAIGenerateImage()
                 end,
                 hold_callback = function ()
                   UIManager:show(InfoMessage:new{
-                    text = _("Take quick notes that will be saved to your notebook.")
+                    text = _("Generate an image from text description using AI.")
                   })
                 end,
               },
@@ -337,18 +326,7 @@ function Assistant:addToMainMenu(menu_items)
                     end
                 },
                 {
-                  text = _("Take Quick Notes"),
-                  callback = function ()
-                    self:onAskAIQuickNote()
-                  end,
-                  hold_callback = function ()
-                    UIManager:show(InfoMessage:new{
-                      text = _("Take quick notes that will be saved to your notebook.")
-                    })
-                  end,
-                },
-                {
-                  text = _("Generate Image from Description"),
+                  text = _("🎨 Generate Image from Description"),
                   callback = function ()
                     self:onAskAIGenerateImage()
                   end,
@@ -808,20 +786,20 @@ function Assistant:onDictButtonsReady(dict_popup, dict_buttons)
   if not CONFIGURATION then return end
 
   local plugin_buttons = {}
-  if self.settings:readSetting("dict_popup_show_wikipedia", true) then
-    table.insert(plugin_buttons, {
-      id = "assistant_wikipedia",
-      font_bold = true,
-      text = _("Wikipedia") .. " (AI)",
-      callback = function()
-          NetworkMgr:runWhenOnline(function()
-              Trapper:wrap(function()
-                self.assistant_dialog:showCustomPrompt(dict_popup.word, "wikipedia")
-              end)
-          end)
-      end,
-    })
-  end
+  -- Always show Generate Image button (replacing Wikipedia)
+  table.insert(plugin_buttons, {
+    id = "assistant_generate_image",
+    font_bold = true,
+    text = _("Generate Image") .. " (AI)",
+    callback = function()
+        NetworkMgr:runWhenOnline(function()
+            Trapper:wrap(function()
+              local showImageDialog = require("assistant_imagedialog")
+              showImageDialog(self)
+            end)
+        end)
+    end,
+  })
 
   if self.settings:readSetting("dict_popup_show_term_xray", false) then
     table.insert(plugin_buttons, {
@@ -852,6 +830,21 @@ function Assistant:onDictButtonsReady(dict_popup, dict_buttons)
       end,
     })
   end
+
+  -- Add Image Generation button to dictionary popup
+  table.insert(plugin_buttons, {
+    id = "assistant_generate_image",
+    text = _("🎨 Generate Image") .. " (AI)",
+    font_bold = true,
+    callback = function()
+        NetworkMgr:runWhenOnline(function()
+            Trapper:wrap(function()
+              local showImageDialog = require("assistant_imagedialog")
+              showImageDialog(self)
+            end)
+        end)
+    end,
+  })
 
   if self.settings:readSetting("dict_popup_show_custom_prompts", false) then
     -- Collect custom prompts with show_on_dictionary_popup = true
