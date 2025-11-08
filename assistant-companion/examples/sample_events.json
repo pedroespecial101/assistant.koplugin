@@ -1,0 +1,60 @@
+[
+  {
+    "event": "query_start",
+    "timestamp": 1699459200,
+    "data": {
+      "provider": "openai",
+      "model": "gpt-4",
+      "title": "Explain quantum physics",
+      "history": [
+        {
+          "role": "system",
+          "content": "You are a helpful AI assistant."
+        },
+        {
+          "role": "user",
+          "content": "Explain quantum physics in simple terms"
+        }
+      ]
+    },
+    "received_at": "2025-11-08T14:30:00.000Z"
+  },
+  {
+    "event": "stream_chunk",
+    "timestamp": 1699459201,
+    "data": {
+      "content": "Quantum physics is the study of "
+    },
+    "received_at": "2025-11-08T14:30:01.000Z"
+  },
+  {
+    "event": "stream_chunk",
+    "timestamp": 1699459201,
+    "data": {
+      "content": "the smallest particles in nature..."
+    },
+    "received_at": "2025-11-08T14:30:01.500Z"
+  },
+  {
+    "event": "query_complete",
+    "timestamp": 1699459205,
+    "data": {
+      "response_length": 450,
+      "duration": 5000,
+      "tokens": {
+        "prompt": 85,
+        "completion": 230
+      }
+    },
+    "received_at": "2025-11-08T14:30:05.000Z"
+  },
+  {
+    "event": "error",
+    "timestamp": 1699459300,
+    "data": {
+      "message": "API rate limit exceeded",
+      "provider": "anthropic"
+    },
+    "received_at": "2025-11-08T14:31:40.000Z"
+  }
+]

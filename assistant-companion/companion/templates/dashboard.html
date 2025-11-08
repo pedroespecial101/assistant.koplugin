@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOReader AI Companion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>📚 KOReader AI Assistant Companion</h1>
+        <div class="status">
+            <span id="connection-status" class="status-disconnected">⚪ Connecting...</span>
+            <span id="event-count">0 events</span>
+            <button id="clear-btn" onclick="clearEvents()">🗑️ Clear</button>
+        </div>
+    </header>
+
+    <nav class="tabs">
+        <button class="tab active" onclick="showTab('output')">
+            📊 Live Output
+        </button>
+        <button class="tab" onclick="showTab('prompts')">
+            🔍 Prompts
+        </button>
+        <button class="tab" onclick="showTab('raw')">
+            📝 Raw Events
+        </button>
+        <button class="tab" onclick="showTab('stats')">
+            📈 Stats
+        </button>
+    </nav>
+
+    <main>
+        <div id="output-tab" class="tab-content active">
+            <div class="content-header">
+                <h2>Live AI Output</h2>
+                <small>Streaming responses from your Kindle</small>
+            </div>
+            <div id="output" class="output-display"></div>
+        </div>
+
+        <div id="prompts-tab" class="tab-content">
+            <div class="content-header">
+                <h2>Prompts & Message History</h2>
+                <small>What's being sent to the AI</small>
+            </div>
+            <div id="prompts" class="prompts-display"></div>
+        </div>
+
+        <div id="raw-tab" class="tab-content">
+            <div class="content-header">
+                <h2>Raw Event Stream</h2>
+                <small>All events with full JSON data</small>
+            </div>
+            <div id="raw" class="raw-display"></div>
+        </div>
+
+        <div id="stats-tab" class="tab-content">
+            <div class="content-header">
+                <h2>Statistics</h2>
+                <small>Event metrics and summaries</small>
+            </div>
+            <div id="stats" class="stats-display">
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">Total Events</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-queries">0</div>
+                        <div class="stat-label">Queries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-chunks">0</div>
+                        <div class="stat-label">Stream Chunks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-errors">0</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                </div>
+                <div id="stats-details"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
